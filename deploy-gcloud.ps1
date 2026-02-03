@@ -1,6 +1,7 @@
 # Aura Designs - Google Cloud Deployment Script
 # 
-# Before running, set these environment variables:
+# This script reads configuration from your .env file automatically.
+# You can also override values with environment variables:
 #   $env:GCP_PROJECT_ID = "your-project-id"
 #   $env:DB_PASSWORD = "your_secure_password"
 #   $env:NEXTAUTH_SECRET = "your_32_char_secret"
@@ -8,10 +9,48 @@
 #   $env:GOOGLE_CLIENT_SECRET = "your_google_client_secret"
 #   $env:ADMIN_EMAILS = "admin1@gmail.com,admin2@gmail.com"
 
-# Configuration - override via environment variables
-$PROJECT_ID = if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { 
-    Write-Host "ERROR: GCP_PROJECT_ID environment variable is not set" -ForegroundColor Red
-    Write-Host "Set it with: `$env:GCP_PROJECT_ID = 'your-gcp-project-id'" -ForegroundColor Yellow
+# Function to load .env file into PowerShell environment
+function Load-EnvFile {
+    $envFile = Join-Path $PSScriptRoot ".env"
+    if (Test-Path $envFile) {
+        Write-Host "Loading configuration from .env file..." -ForegroundColor Gray
+        Get-Content $envFile | ForEach-Object {
+            # Match lines like: KEY=value or KEY="value" (skip comments and empty lines)
+            if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
+                $key = $matches[1]
+                $value = $matches[2].Trim()
+                # Remove surrounding quotes
+                if ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
+                    $value = $matches[1]
+                }
+                # Only set if not already set in environment
+                $currentValue = [System.Environment]::GetEnvironmentVariable($key, "Process")
+                if (-not $currentValue) {
+                    [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+                    Write-Host "  Loaded: $key" -ForegroundColor DarkGray
+                }
+            }
+        }
+    } else {
+        Write-Host "WARNING: .env file not found at $envFile" -ForegroundColor Yellow
+    }
+}
+
+# Load .env file first
+Load-EnvFile
+
+# Now read variables using direct environment access
+$PROJECT_ID = [System.Environment]::GetEnvironmentVariable("GCP_PROJECT_ID", "Process")
+$NEXTAUTH_SECRET = [System.Environment]::GetEnvironmentVariable("NEXTAUTH_SECRET", "Process")
+$GOOGLE_CLIENT_ID = [System.Environment]::GetEnvironmentVariable("GOOGLE_CLIENT_ID", "Process")
+$GOOGLE_CLIENT_SECRET = [System.Environment]::GetEnvironmentVariable("GOOGLE_CLIENT_SECRET", "Process")
+$ADMIN_EMAILS = [System.Environment]::GetEnvironmentVariable("ADMIN_EMAILS", "Process")
+$DB_PASSWORD = [System.Environment]::GetEnvironmentVariable("DB_PASSWORD", "Process")
+
+# Configuration
+if (-not $PROJECT_ID) { 
+    Write-Host "ERROR: GCP_PROJECT_ID is not set" -ForegroundColor Red
+    Write-Host "Set it in .env file or with: `$env:GCP_PROJECT_ID = 'your-gcp-project-id'" -ForegroundColor Yellow
     exit 1
 }
 $REGION = if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" }
@@ -19,11 +58,37 @@ $SERVICE_NAME = "aura-designs"
 $DB_INSTANCE = "aura-designs-db"
 $DB_NAME = "aura_designs"
 
+# Validate all required environment variables
+$missingVars = @()
+if (-not $DB_PASSWORD) { $missingVars += "DB_PASSWORD" }
+if (-not $NEXTAUTH_SECRET) { $missingVars += "NEXTAUTH_SECRET" }
+if (-not $GOOGLE_CLIENT_ID) { $missingVars += "GOOGLE_CLIENT_ID" }
+if (-not $GOOGLE_CLIENT_SECRET) { $missingVars += "GOOGLE_CLIENT_SECRET" }
+if (-not $ADMIN_EMAILS) { $missingVars += "ADMIN_EMAILS" }
+
+if ($missingVars.Count -gt 0) {
+    Write-Host "ERROR: Missing required environment variables:" -ForegroundColor Red
+    $missingVars | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+    Write-Host ""
+    Write-Host "Set them in your .env file or as environment variables before running this script." -ForegroundColor White
+    exit 1
+}
+
+Write-Host ""
 Write-Host "Deploying Aura Designs to Google Cloud..." -ForegroundColor Cyan
+Write-Host "  Project: $PROJECT_ID" -ForegroundColor Gray
+Write-Host "  Region: $REGION" -ForegroundColor Gray
+Write-Host "  Admin Emails: $ADMIN_EMAILS" -ForegroundColor Gray
+Write-Host "  NEXTAUTH_SECRET: $(if($NEXTAUTH_SECRET){'[SET]'}else{'[MISSING]'})" -ForegroundColor Gray
+Write-Host ""
 
 # Step 1: Set project
 Write-Host "Setting project..." -ForegroundColor Yellow
-gcloud config set project $PROJECT_ID
+gcloud config set project $PROJECT_ID 2>$null
+
+# Add production environment tag to suppress warning
+Write-Host "Setting environment tag..." -ForegroundColor Yellow
+gcloud resource-manager tags bindings create --tag-value=production --parent="//cloudresourcemanager.googleapis.com/projects/$PROJECT_ID" --location=global 2>$null
 
 # Step 2: Enable APIs
 Write-Host "Enabling required APIs..." -ForegroundColor Yellow
@@ -37,14 +102,8 @@ Write-Host "Checking database..." -ForegroundColor Yellow
 $dbCheck = & gcloud sql instances list --filter="name=$DB_INSTANCE" --format='value[no-heading](name)' 2>&1
 
 if ($dbCheck -notlike "*$DB_INSTANCE*") {
-    # Ensure DB_PASSWORD environment variable is set
-    if (-not $env:DB_PASSWORD) {
-        Write-Host "ERROR: DB_PASSWORD environment variable is not set" -ForegroundColor Red
-        Write-Host "Set it with: `$env:DB_PASSWORD = 'your_secure_password'" -ForegroundColor Yellow
-        exit 1
-    }
     Write-Host "Creating Cloud SQL instance (this takes ~5 minutes)..." -ForegroundColor Yellow
-    gcloud sql instances create $DB_INSTANCE --database-version=POSTGRES_14 --tier=db-f1-micro --region=$REGION --root-password="$($env:DB_PASSWORD)"
+    gcloud sql instances create $DB_INSTANCE --database-version=POSTGRES_14 --tier=db-f1-micro --region=$REGION --root-password="$DB_PASSWORD"
     
     Write-Host "Creating database..." -ForegroundColor Yellow
     gcloud sql databases create $DB_NAME --instance=$DB_INSTANCE
@@ -56,32 +115,56 @@ if ($dbCheck -notlike "*$DB_INSTANCE*") {
 Write-Host "Building and deploying to Cloud Run..." -ForegroundColor Yellow
 Write-Host "This may take a few minutes on first deploy..." -ForegroundColor Gray
 
-# Get password from environment variable
-if (-not $env:DB_PASSWORD) {
-    Write-Host "ERROR: DB_PASSWORD environment variable is not set" -ForegroundColor Red
-    Write-Host "Set it with: `$env:DB_PASSWORD = 'your_secure_password'" -ForegroundColor Yellow
-    exit 1
+# URL-encode special characters in password for DATABASE_URL
+# Note: Only encode if the password doesn't already contain URL-encoded chars (%)
+if ($DB_PASSWORD -notmatch '%[0-9A-Fa-f]{2}') {
+    $encodedPassword = [System.Uri]::EscapeDataString($DB_PASSWORD)
+} else {
+    # Password might already be URL-encoded or contain literal %, use as-is
+    $encodedPassword = $DB_PASSWORD
 }
-$DB_PASSWORD = $env:DB_PASSWORD
 $SOCKET_PATH = "/cloudsql/${PROJECT_ID}:${REGION}:${DB_INSTANCE}"
-$DATABASE_URL = "postgresql://postgres:${DB_PASSWORD}@localhost/${DB_NAME}?host=${SOCKET_PATH}"
+$DATABASE_URL = "postgresql://postgres:${encodedPassword}@localhost/${DB_NAME}?host=${SOCKET_PATH}"
 
-# Cloud Run URL (will be updated after deploy)
-$CLOUD_RUN_URL = "https://${SERVICE_NAME}-${PROJECT_ID}.${REGION}.run.app"
+Write-Host "  DATABASE_URL password encoded: $($encodedPassword.Substring(0, [Math]::Min(5, $encodedPassword.Length)))..." -ForegroundColor DarkGray
 
-# Deploy command
+# Check if service already exists to get the actual URL
+$existingUrl = & gcloud run services describe $SERVICE_NAME --region=$REGION --format='value[no-heading](status.url)' 2>$null
+if ($existingUrl) {
+    $CLOUD_RUN_URL = $existingUrl
+    Write-Host "Using existing service URL: $CLOUD_RUN_URL" -ForegroundColor Gray
+} else {
+    # Placeholder - will update after first deploy
+    $CLOUD_RUN_URL = "https://${SERVICE_NAME}-placeholder.run.app"
+    Write-Host "New deployment - will update NEXTAUTH_URL after deploy" -ForegroundColor Gray
+}
+
+# Deploy command - use env-vars-file to handle special characters properly
+# Create a temporary env file for gcloud
+$tempEnvFile = Join-Path $PSScriptRoot ".env.gcloud.yaml"
+@"
+NODE_ENV: production
+NEXTAUTH_URL: "$CLOUD_RUN_URL"
+NEXTAUTH_SECRET: "$NEXTAUTH_SECRET"
+GOOGLE_CLIENT_ID: "$GOOGLE_CLIENT_ID"
+GOOGLE_CLIENT_SECRET: "$GOOGLE_CLIENT_SECRET"
+ADMIN_EMAILS: "$ADMIN_EMAILS"
+DATABASE_URL: "$DATABASE_URL"
+"@ | Out-File -FilePath $tempEnvFile -Encoding utf8
+
+Write-Host "Environment variables to be set:" -ForegroundColor Gray
+Write-Host "  NEXTAUTH_URL: $CLOUD_RUN_URL" -ForegroundColor DarkGray
+Write-Host "  NEXTAUTH_SECRET: [SET]" -ForegroundColor DarkGray
+Write-Host "  GOOGLE_CLIENT_ID: [SET]" -ForegroundColor DarkGray
+Write-Host "  GOOGLE_CLIENT_SECRET: [SET]" -ForegroundColor DarkGray
+Write-Host "  ADMIN_EMAILS: $ADMIN_EMAILS" -ForegroundColor DarkGray
+
 $deployArgs = @(
     "run", "deploy", $SERVICE_NAME,
     "--source", ".",
     "--region", $REGION,
     "--allow-unauthenticated",
-    "--set-env-vars", "NODE_ENV=production",
-    "--set-env-vars", "NEXTAUTH_URL=$CLOUD_RUN_URL",
-    "--set-env-vars", "NEXTAUTH_SECRET=$($env:NEXTAUTH_SECRET)",
-    "--set-env-vars", "GOOGLE_CLIENT_ID=$($env:GOOGLE_CLIENT_ID)",
-    "--set-env-vars", "GOOGLE_CLIENT_SECRET=$($env:GOOGLE_CLIENT_SECRET)",
-    "--set-env-vars", "ADMIN_EMAILS=$($env:ADMIN_EMAILS)",
-    "--set-env-vars", "DATABASE_URL=$DATABASE_URL",
+    "--env-vars-file", $tempEnvFile,
     "--add-cloudsql-instances", "${PROJECT_ID}:${REGION}:${DB_INSTANCE}",
     "--memory", "1Gi",
     "--cpu", "1",
@@ -91,9 +174,20 @@ $deployArgs = @(
 
 & gcloud @deployArgs
 
-# Step 5: Get the actual URL
+# Cleanup temp file
+if (Test-Path $tempEnvFile) {
+    Remove-Item $tempEnvFile -Force
+}
+
+# Step 5: Get the actual URL and update NEXTAUTH_URL if needed
 Write-Host "Getting service URL..." -ForegroundColor Yellow
 $SERVICE_URL = & gcloud run services describe $SERVICE_NAME --region=$REGION --format='value[no-heading](status.url)'
+
+# Update NEXTAUTH_URL with the correct URL if it was a placeholder or different
+if ($SERVICE_URL -and ($SERVICE_URL -ne $CLOUD_RUN_URL)) {
+    Write-Host "Updating NEXTAUTH_URL to actual service URL..." -ForegroundColor Yellow
+    gcloud run services update $SERVICE_NAME --region=$REGION --update-env-vars="NEXTAUTH_URL=$SERVICE_URL"
+}
 
 Write-Host ""
 Write-Host "Deployment complete!" -ForegroundColor Green
