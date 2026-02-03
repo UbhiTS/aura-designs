@@ -1,0 +1,26 @@
+.env
+.env.local
+.env.production.local
+env-vars.yaml
+env-vars.local.yaml
+*.local.yaml
+node_modules
+.next
+out
+build
+*.log
+npm-debug.log*
+.DS_Store
+*.pem
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+prisma/dev.db
+prisma/dev.db-journal
+
+# Uploaded images (keep .gitkeep for folder structure)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Data files with user content
+data/settings.json
