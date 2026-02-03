@@ -1,6 +1,8 @@
 .env
 .env.local
+.env.production
 .env.production.local
+.env.gcloud.yaml
 env-vars.yaml
 env-vars.local.yaml
 *.local.yaml

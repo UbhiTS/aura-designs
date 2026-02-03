@@ -1,6 +1,8 @@
 # Aura Designs - Google Cloud Deployment Script
 # 
-# This script reads configuration from your .env file automatically.
+# This script reads configuration from .env.production file for cloud deployments.
+# For local development, Next.js uses .env.local automatically.
+#
 # You can also override values with environment variables:
 #   $env:GCP_PROJECT_ID = "your-project-id"
 #   $env:DB_PASSWORD = "your_secure_password"
@@ -9,27 +11,38 @@
 #   $env:GOOGLE_CLIENT_SECRET = "your_google_client_secret"
 #   $env:ADMIN_EMAILS = "admin1@gmail.com,admin2@gmail.com"
 
-# Function to load .env file into PowerShell environment
+# Function to load environment file into PowerShell environment
 function Load-EnvFile {
-    $envFile = Join-Path $PSScriptRoot ".env"
-    if (Test-Path $envFile) {
-        Write-Host "Loading configuration from .env file..." -ForegroundColor Gray
-        Get-Content $envFile | ForEach-Object {
-            # Match lines like: KEY=value or KEY="value" (skip comments and empty lines)
-            if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
-                $key = $matches[1]
-                $value = $matches[2].Trim()
-                # Remove surrounding quotes
-                if ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
-                    $value = $matches[1]
-                }
-                # Always set from .env file (overwrite any cached values)
-                [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
-                Write-Host "  Loaded: $key" -ForegroundColor DarkGray
-            }
+    param(
+        [string]$EnvFileName = ".env.production"
+    )
+    
+    $envFile = Join-Path $PSScriptRoot $EnvFileName
+    
+    # Fallback to .env if .env.production doesn't exist
+    if (-not (Test-Path $envFile)) {
+        $envFile = Join-Path $PSScriptRoot ".env"
+        if (-not (Test-Path $envFile)) {
+            Write-Host "WARNING: Neither .env.production nor .env file found" -ForegroundColor Yellow
+            return
         }
-    } else {
-        Write-Host "WARNING: .env file not found at $envFile" -ForegroundColor Yellow
+        Write-Host "Using fallback .env file (consider creating .env.production for deployments)" -ForegroundColor Yellow
+    }
+    
+    Write-Host "Loading configuration from $EnvFileName..." -ForegroundColor Gray
+    Get-Content $envFile | ForEach-Object {
+        # Match lines like: KEY=value or KEY="value" (skip comments and empty lines)
+        if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
+            $key = $matches[1]
+            $value = $matches[2].Trim()
+            # Remove surrounding quotes
+            if ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
+                $value = $matches[1]
+            }
+            # Always set from .env file (overwrite any cached values)
+            [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+            Write-Host "  Loaded: $key" -ForegroundColor DarkGray
+        }
     }
 }
 
@@ -136,12 +149,24 @@ if ($existingUrl) {
     Write-Host "New deployment - will update NEXTAUTH_URL after deploy" -ForegroundColor Gray
 }
 
+# Use custom domain for NEXTAUTH_URL from .env file
+$NEXTAUTH_URL_FROM_ENV = [System.Environment]::GetEnvironmentVariable("NEXTAUTH_URL", "Process")
+if ($NEXTAUTH_URL_FROM_ENV -and $NEXTAUTH_URL_FROM_ENV -ne "http://localhost:3000") {
+    $NEXTAUTH_URL = $NEXTAUTH_URL_FROM_ENV
+    Write-Host "NEXTAUTH_URL from .env: $NEXTAUTH_URL" -ForegroundColor Cyan
+} else {
+    # Fallback to Cloud Run URL if no custom domain is set
+    $NEXTAUTH_URL = $CLOUD_RUN_URL
+    Write-Host "NEXTAUTH_URL using Cloud Run URL: $NEXTAUTH_URL" -ForegroundColor Yellow
+    Write-Host "  TIP: Set NEXTAUTH_URL in .env to your custom domain (e.g., https://aura.ubhims.xyz)" -ForegroundColor DarkYellow
+}
+
 # Deploy command - use env-vars-file to handle special characters properly
 # Create a temporary env file for gcloud
 $tempEnvFile = Join-Path $PSScriptRoot ".env.gcloud.yaml"
 @"
 NODE_ENV: production
-NEXTAUTH_URL: "$CLOUD_RUN_URL"
+NEXTAUTH_URL: "$NEXTAUTH_URL"
 NEXTAUTH_SECRET: "$NEXTAUTH_SECRET"
 GOOGLE_CLIENT_ID: "$GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET: "$GOOGLE_CLIENT_SECRET"
@@ -150,7 +175,7 @@ DATABASE_URL: "$DATABASE_URL"
 "@ | Out-File -FilePath $tempEnvFile -Encoding utf8
 
 Write-Host "Environment variables to be set:" -ForegroundColor Gray
-Write-Host "  NEXTAUTH_URL: $CLOUD_RUN_URL" -ForegroundColor DarkGray
+Write-Host "  NEXTAUTH_URL: $NEXTAUTH_URL" -ForegroundColor DarkGray
 Write-Host "  NEXTAUTH_SECRET: [SET]" -ForegroundColor DarkGray
 Write-Host "  GOOGLE_CLIENT_ID: [SET]" -ForegroundColor DarkGray
 Write-Host "  GOOGLE_CLIENT_SECRET: [SET]" -ForegroundColor DarkGray
