@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { generateUniqueSlug } from '@/lib/slug';
 
 // GET single product
 export async function GET(
@@ -46,6 +47,18 @@ export async function PUT(
     const body = await request.json();
     const { name, description, price, category, images, featured, available } = body;
 
+    // Get current product to check if name changed
+    const currentProduct = await prisma.product.findUnique({
+      where: { id: params.id },
+      select: { name: true, slug: true },
+    });
+
+    // Generate new slug if name changed
+    let slug = currentProduct?.slug;
+    if (currentProduct && name !== currentProduct.name) {
+      slug = await generateUniqueSlug(name, params.id);
+    }
+
     // Delete existing images and create new ones
     await prisma.image.deleteMany({
       where: { productId: params.id },
@@ -55,6 +68,7 @@ export async function PUT(
       where: { id: params.id },
       data: {
         name,
+        slug,
         description,
         price: price ? parseFloat(price) : null,
         category,

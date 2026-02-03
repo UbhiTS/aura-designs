@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { generateUniqueSlug } from '@/lib/slug';
 
 // GET all products
 export async function GET(request: NextRequest) {
@@ -45,9 +46,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, description, price, category, images, featured } = body;
 
+    // Generate a unique slug from the product name
+    const slug = await generateUniqueSlug(name);
+
     const product = await prisma.product.create({
       data: {
         name,
+        slug,
         description,
         price: price ? parseFloat(price) : null,
         category: category || 'gifts',

@@ -5,16 +5,16 @@ import { Share2, Check, Copy, Facebook, Twitter, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
-  productId: string;
+  productSlug: string;
   productName: string;
 }
 
-export default function ShareButton({ productId, productName }: Props) {
+export default function ShareButton({ productSlug, productName }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const productUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/product/${productId}`
+    ? `${window.location.origin}/product/${productSlug}`
     : '';
 
   const copyLink = async () => {

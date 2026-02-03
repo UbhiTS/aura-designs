@@ -11,13 +11,13 @@ import type { Product, Image as PrismaImage } from '@prisma/client';
 type ProductWithImages = Product & { images: PrismaImage[] };
 
 interface Props {
-  params: { id: string };
+  params: { slug: string };
 }
 
-async function getProduct(id: string) {
+async function getProduct(slug: string) {
   try {
     const product = await prisma.product.findUnique({
-      where: { id },
+      where: { slug },
       include: { images: { orderBy: { order: 'asc' } } },
     });
     return product;
@@ -45,7 +45,7 @@ async function getRelatedProducts(category: string, excludeId: string) {
 }
 
 export async function generateMetadata({ params }: Props) {
-  const product = await getProduct(params.id);
+  const product = await getProduct(params.slug);
   
   if (!product) {
     return { title: 'Product Not Found' };
@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const product = await getProduct(params.id);
+  const product = await getProduct(params.slug);
 
   if (!product) {
     notFound();
@@ -133,7 +133,7 @@ export default async function ProductPage({ params }: Props) {
 
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <ShareButton productId={product.id} productName={product.name} />
+                <ShareButton productSlug={product.slug} productName={product.name} />
                 <button className="btn-secondary flex items-center justify-center gap-2">
                   <Heart className="w-5 h-5" />
                   Save to Favorites
@@ -187,7 +187,7 @@ export default async function ProductPage({ params }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map((relatedProduct: ProductWithImages) => (
                 <FadeIn key={relatedProduct.id}>
-                  <Link href={`/product/${relatedProduct.id}`}>
+                  <Link href={`/product/${relatedProduct.slug}`}>
                     <div className="bg-surface-200 border border-surface-300 rounded-2xl overflow-hidden hover:border-accent-primary/30 transition-all group">
                       <div className="relative aspect-square overflow-hidden">
                         {relatedProduct.images[0] ? (

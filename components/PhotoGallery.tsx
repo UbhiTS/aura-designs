@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Eye } from 'lucide-react';
 
 interface PhotoGalleryProps {
-  images: { src: string; alt: string; productId?: string }[];
+  images: { src: string; alt: string; productSlug?: string }[];
 }
 
 export default function PhotoGallery({ images }: PhotoGalleryProps) {
@@ -38,8 +38,8 @@ export default function PhotoGallery({ images }: PhotoGalleryProps) {
               </motion.div>
             );
 
-            return image.productId ? (
-              <Link key={index} href={`/product/${image.productId}`}>
+            return image.productSlug ? (
+              <Link key={index} href={`/product/${image.productSlug}`}>
                 {content}
               </Link>
             ) : (

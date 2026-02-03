@@ -2,6 +2,17 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Function to generate slug from name
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const sampleProducts = [
   // Candles
   {
@@ -163,13 +174,29 @@ async function main() {
   await prisma.product.deleteMany();
   console.log('✓ Cleared existing products and images\n');
 
+  // Track used slugs for duplicates
+  const usedSlugs = new Map<string, number>();
+
   // Create products with images
   for (const productData of sampleProducts) {
     const { images, ...product } = productData;
     
+    // Generate unique slug
+    let baseSlug = slugify(product.name);
+    let slug = baseSlug;
+    
+    if (usedSlugs.has(baseSlug)) {
+      const count = usedSlugs.get(baseSlug)! + 1;
+      usedSlugs.set(baseSlug, count);
+      slug = `${baseSlug}-${count}`;
+    } else {
+      usedSlugs.set(baseSlug, 1);
+    }
+    
     const createdProduct = await prisma.product.create({
       data: {
         ...product,
+        slug,
         images: {
           create: images.map((img, index) => ({
             url: img.url,
@@ -181,7 +208,7 @@ async function main() {
       include: { images: true },
     });
 
-    console.log(`✓ Created: ${createdProduct.name} (${createdProduct.images.length} images)`);
+    console.log(`✓ Created: ${createdProduct.name} → /product/${createdProduct.slug}`);
   }
 
   console.log('\n✨ Seeding completed successfully!');

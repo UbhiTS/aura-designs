@@ -7,6 +7,9 @@ import { FadeIn, FadeInUp, StaggerContainer, StaggerItem } from '@/components/An
 import prisma from '@/lib/prisma';
 import type { Product, Image as PrismaImage, Testimonial } from '@prisma/client';
 
+// Force dynamic rendering to always fetch fresh data
+export const dynamic = 'force-dynamic';
+
 type ProductWithImages = Product & { images: PrismaImage[] };
 
 // Default settings for fallback
@@ -180,7 +183,7 @@ export default async function HomePage() {
                         </p>
                       )}
                       <Link
-                        href={`/product/${product.id}`}
+                        href={`/product/${product.slug}`}
                         className="inline-block w-full py-3 bg-dark-300 text-white font-serif tracking-wider uppercase hover:bg-accent-primary transition-colors"
                       >
                         View Details

@@ -15,6 +15,7 @@ interface ProductImage {
 interface Product {
   id: string;
   name: string;
+  slug: string;
   description?: string | null;
   price?: number | null;
   category: string;
@@ -35,7 +36,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
-    const url = `${window.location.origin}/product/${product.id}`;
+    const url = `${window.location.origin}/product/${product.slug}`;
     
     if (navigator.share) {
       try {
@@ -63,7 +64,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
     >
-      <Link href={`/product/${product.id}`}>
+      <Link href={`/product/${product.slug}`}>
         <div
           className="elegant-card group cursor-pointer"
           onMouseEnter={() => setIsHovered(true)}

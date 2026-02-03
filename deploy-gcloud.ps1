@@ -23,12 +23,9 @@ function Load-EnvFile {
                 if ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
                     $value = $matches[1]
                 }
-                # Only set if not already set in environment
-                $currentValue = [System.Environment]::GetEnvironmentVariable($key, "Process")
-                if (-not $currentValue) {
-                    [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
-                    Write-Host "  Loaded: $key" -ForegroundColor DarkGray
-                }
+                # Always set from .env file (overwrite any cached values)
+                [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
+                Write-Host "  Loaded: $key" -ForegroundColor DarkGray
             }
         }
     } else {
