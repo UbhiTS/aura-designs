@@ -5,6 +5,9 @@ import HeroSection from '@/components/HeroSection';
 import Testimonials from '@/components/Testimonials';
 import { FadeIn, FadeInUp, StaggerContainer, StaggerItem } from '@/components/AnimatedSection';
 import prisma from '@/lib/prisma';
+import type { Product, Image as PrismaImage, Testimonial } from '@prisma/client';
+
+type ProductWithImages = Product & { images: PrismaImage[] };
 
 // Default settings for fallback
 const defaultSettings = {
@@ -70,7 +73,7 @@ async function getApprovedTestimonials() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     });
-    return testimonials.map(t => ({
+    return testimonials.map((t: Testimonial) => ({
       title: 'Customer Review',
       quote: t.message,
       author: t.name,
@@ -153,7 +156,7 @@ export default async function HomePage() {
             </FadeIn>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {featuredProducts.slice(0, 3).map((product, index) => (
+              {featuredProducts.slice(0, 3).map((product: ProductWithImages, index: number) => (
                 <FadeIn key={product.id}>
                   <div className="bg-white/5 backdrop-blur-sm rounded-2xl overflow-hidden border border-surface-50/20 hover:border-accent-primary/40 transition-all duration-300 group">
                     <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl">
@@ -240,7 +243,7 @@ export default async function HomePage() {
             </FadeIn>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recentProducts.slice(0, 4).map((product, index) => (
+              {recentProducts.slice(0, 4).map((product: ProductWithImages, index: number) => (
                 <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>

@@ -1,9 +1,0 @@
-# Uploads Directory
-
-This folder stores uploaded product images. It is created automatically when you upload your first image.
-
-**Note:** This folder is gitignored by default. If deploying to production, consider using a cloud storage solution like:
-- Cloudinary
-- AWS S3
-- Vercel Blob
-- Supabase Storage

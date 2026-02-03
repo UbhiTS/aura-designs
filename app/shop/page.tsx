@@ -4,6 +4,9 @@ import ProductCard from '@/components/ProductCard';
 import ShopFilters from '@/components/ShopFilters';
 import { FadeIn } from '@/components/AnimatedSection';
 import { Sparkles } from 'lucide-react';
+import type { Product, Image as PrismaImage } from '@prisma/client';
+
+type ProductWithImages = Product & { images: PrismaImage[] };
 
 interface Props {
   searchParams: { category?: string };
@@ -32,7 +35,7 @@ async function getCategories() {
       select: { category: true },
       distinct: ['category'],
     });
-    return categories.map((c) => c.category);
+    return categories.map((c: { category: string }) => c.category);
   } catch (error) {
     return [];
   }
@@ -89,7 +92,7 @@ export default async function ShopPage({ searchParams }: Props) {
           </FadeIn>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product, index) => (
+            {products.map((product: ProductWithImages, index: number) => (
               <ProductCard key={product.id} product={product} index={index} />
             ))}
           </div>

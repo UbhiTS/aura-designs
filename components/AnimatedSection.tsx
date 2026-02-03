@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ReactNode, useState, useEffect } from 'react';
 
 interface AnimatedSectionProps {
   children: ReactNode;
@@ -9,10 +9,22 @@ interface AnimatedSectionProps {
   delay?: number;
 }
 
+// Hook to check if the component has mounted (hydrated)
+function useHasMounted() {
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+  return hasMounted;
+}
+
 export function FadeIn({ children, className = '', delay = 0 }: AnimatedSectionProps) {
+  const hasMounted = useHasMounted();
+  const prefersReducedMotion = useReducedMotion();
+  
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={hasMounted && !prefersReducedMotion ? { opacity: 0, y: 20 } : false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay }}
@@ -24,9 +36,12 @@ export function FadeIn({ children, className = '', delay = 0 }: AnimatedSectionP
 }
 
 export function FadeInUp({ children, className = '', delay = 0 }: AnimatedSectionProps) {
+  const hasMounted = useHasMounted();
+  const prefersReducedMotion = useReducedMotion();
+  
   return (
     <motion.div
-      initial={{ opacity: 0, y: 40 }}
+      initial={hasMounted && !prefersReducedMotion ? { opacity: 0, y: 40 } : false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.8, delay, ease: 'easeOut' }}
@@ -38,9 +53,12 @@ export function FadeInUp({ children, className = '', delay = 0 }: AnimatedSectio
 }
 
 export function SlideInLeft({ children, className = '', delay = 0 }: AnimatedSectionProps) {
+  const hasMounted = useHasMounted();
+  const prefersReducedMotion = useReducedMotion();
+  
   return (
     <motion.div
-      initial={{ opacity: 0, x: -50 }}
+      initial={hasMounted && !prefersReducedMotion ? { opacity: 0, x: -50 } : false}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.8, delay, ease: 'easeOut' }}
@@ -52,9 +70,12 @@ export function SlideInLeft({ children, className = '', delay = 0 }: AnimatedSec
 }
 
 export function SlideInRight({ children, className = '', delay = 0 }: AnimatedSectionProps) {
+  const hasMounted = useHasMounted();
+  const prefersReducedMotion = useReducedMotion();
+  
   return (
     <motion.div
-      initial={{ opacity: 0, x: 50 }}
+      initial={hasMounted && !prefersReducedMotion ? { opacity: 0, x: 50 } : false}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.8, delay, ease: 'easeOut' }}
@@ -66,9 +87,12 @@ export function SlideInRight({ children, className = '', delay = 0 }: AnimatedSe
 }
 
 export function ScaleIn({ children, className = '', delay = 0 }: AnimatedSectionProps) {
+  const hasMounted = useHasMounted();
+  const prefersReducedMotion = useReducedMotion();
+  
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={hasMounted && !prefersReducedMotion ? { opacity: 0, scale: 0.9 } : false}
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay }}
@@ -80,9 +104,12 @@ export function ScaleIn({ children, className = '', delay = 0 }: AnimatedSection
 }
 
 export function StaggerContainer({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const hasMounted = useHasMounted();
+  const prefersReducedMotion = useReducedMotion();
+  
   return (
     <motion.div
-      initial="hidden"
+      initial={hasMounted && !prefersReducedMotion ? "hidden" : false}
       whileInView="visible"
       viewport={{ once: true }}
       variants={{

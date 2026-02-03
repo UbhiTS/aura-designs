@@ -6,6 +6,9 @@ import ProductImageGallery from '@/components/ProductImageGallery';
 import ShareButton from '@/components/ShareButton';
 import { FadeIn, FadeInUp } from '@/components/AnimatedSection';
 import { ArrowLeft, Heart, Sparkles } from 'lucide-react';
+import type { Product, Image as PrismaImage } from '@prisma/client';
+
+type ProductWithImages = Product & { images: PrismaImage[] };
 
 interface Props {
   params: { id: string };
@@ -182,7 +185,7 @@ export default async function ProductPage({ params }: Props) {
             </FadeIn>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map((relatedProduct) => (
+              {relatedProducts.map((relatedProduct: ProductWithImages) => (
                 <FadeIn key={relatedProduct.id}>
                   <Link href={`/product/${relatedProduct.id}`}>
                     <div className="bg-surface-200 border border-surface-300 rounded-2xl overflow-hidden hover:border-accent-primary/30 transition-all group">

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Instagram, Facebook, MessageSquare } from 'lucide-react';
 import { FaPinterest } from 'react-icons/fa';
 import TestimonialModal from './TestimonialModal';
@@ -32,6 +32,15 @@ export default function HeroSection({
   pinterestHandle = '',
 }: HeroSectionProps) {
   const [isTestimonialOpen, setIsTestimonialOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  // Only apply initial animation states after mount to prevent SSR flash
+  const shouldAnimate = hasMounted && !prefersReducedMotion;
 
   return (
     <>
@@ -57,7 +66,7 @@ export default function HeroSection({
         {/* Decorative curved lines */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
           <motion.path
-            initial={{ pathLength: 0, opacity: 0 }}
+            initial={shouldAnimate ? { pathLength: 0, opacity: 0 } : false}
             animate={{ pathLength: 1, opacity: 0.15 }}
             transition={{ duration: 2, ease: "easeInOut" }}
             d="M 200 100 Q 400 300 300 500 Q 200 700 400 800"
@@ -67,7 +76,7 @@ export default function HeroSection({
             className="text-text-muted"
           />
           <motion.path
-            initial={{ pathLength: 0, opacity: 0 }}
+            initial={shouldAnimate ? { pathLength: 0, opacity: 0 } : false}
             animate={{ pathLength: 1, opacity: 0.15 }}
             transition={{ duration: 2, delay: 0.5, ease: "easeInOut" }}
             d="M 800 50 Q 600 200 700 400 Q 800 600 600 750"
@@ -84,7 +93,7 @@ export default function HeroSection({
             <div className="relative flex items-center justify-center">
               {/* Small circular image - top left */}
               <motion.div
-                initial={{ opacity: 0, x: -50 }}
+                initial={shouldAnimate ? { opacity: 0, x: -50 } : false}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="absolute left-0 top-0 w-32 h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden border-2 border-surface-50/30 z-10 hero-glow-1"
@@ -99,7 +108,7 @@ export default function HeroSection({
 
               {/* Main large circular image */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={shouldAnimate ? { opacity: 0, scale: 0.8 } : false}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
                 className="relative w-72 h-72 md:w-96 md:h-96 rounded-full overflow-hidden border-4 border-surface-50/20 hero-glow-2"
@@ -118,7 +127,7 @@ export default function HeroSection({
 
               {/* Small circular image - bottom right */}
               <motion.div
-                initial={{ opacity: 0, x: 50 }}
+                initial={shouldAnimate ? { opacity: 0, x: 50 } : false}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
                 className="absolute right-0 bottom-0 w-36 h-36 lg:w-44 lg:h-44 rounded-full overflow-hidden border-2 border-surface-50/30 hero-glow-3"
@@ -135,7 +144,7 @@ export default function HeroSection({
             {/* Right side - Content */}
             <div className="text-center lg:text-left lg:pl-24 xl:pl-32 relative z-20">
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
+                initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 className="text-text-secondary text-lg mb-6 max-w-md mx-auto lg:mx-0"
@@ -144,7 +153,7 @@ export default function HeroSection({
               </motion.p>
 
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="relative z-20 flex flex-col gap-3 items-center lg:items-start"
@@ -169,7 +178,7 @@ export default function HeroSection({
           {/* Title and Follow Us section */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 pb-8">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={shouldAnimate ? { opacity: 0, y: 30 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.8 }}
             >
@@ -181,7 +190,7 @@ export default function HeroSection({
             {/* Follow Us Section */}
             {(instagramHandle || facebookHandle || pinterestHandle) && (
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={shouldAnimate ? { opacity: 0, y: 30 } : false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 1 }}
                 className="pb-4 relative z-10"
@@ -238,7 +247,7 @@ export default function HeroSection({
               ].map((feature, index) => (
                 <motion.div
                   key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
